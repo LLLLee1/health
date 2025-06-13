@@ -6,32 +6,30 @@ import re
 import jieba
 import json
 import matplotlib.pyplot as plt
+from datetime import datetime
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.ensemble import GradientBoostingClassifier
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
 from sklearn.pipeline import Pipeline
 from sklearn.base import BaseEstimator, TransformerMixin
-from datetime import datetime
 
-# 1. 高级数据加载与预处理（保留原始数据集完整性）
+# 1. 数据加载器
 class HealthDataLoader:
-    def __init__(self, file_path):
+    def __init__(self, file_path="medical_claims_20250613_162711.csv"):
         self.file_path = file_path
         self.data = None
         
     def load_data(self):
-        """加载健康声明数据集"""
         try:
             self.data = pd.read_csv(self.file_path)
-            st.success(f"成功加载数据集: {len(self.data)}条健康声明")
+            st.success(f"✅ 成功加载数据集: {len(self.data)}条健康声明")
             return True
         except Exception as e:
             st.error(f"数据加载失败: {str(e)}")
             return False
         
     def get_sample_data(self, n=5):
-        """获取数据集样本"""
         return self.data.sample(n)[['claim', 'credibility']]
 
 # 2. 专业特征工程（结合医学知识）
@@ -264,9 +262,8 @@ class HealthCredibilityReport:
                 else:
                     st.markdown(f"**{key}**: {value}")
 
-# 5. Streamlit应用（完整系统）
+# 5. Streamlit应用主函数
 def main_health_app():
-    # 应用设置
     st.set_page_config(
         page_title="科学健康知识可信度分析系统",
         page_icon="🩺",
@@ -274,122 +271,113 @@ def main_health_app():
         initial_sidebar_state="expanded"
     )
     
-    # 标题和介绍
     st.title("🩺 科学健康知识可信度分析系统")
-    st.markdown("""
-        > 基于15,000条专业健康声明数据集，通过AI模型评估健康信息的科学可信度。
-        帮助用户识别伪科学内容，提供专业健康建议。
-    """)
+    st.markdown("基于15,000条专业健康声明数据集评估健康信息可信度")
     
-    # 状态管理
+    # 初始化状态
     if 'history' not in st.session_state:
         st.session_state.history = []
     
     # 加载数据
-    data_loader = HealthDataLoader("medical_claims_dataset.csv")
+    data_loader = HealthDataLoader()
     if not data_loader.load_data():
         return
     
     # 模型训练部分
-    st.subheader("模型训练与评估")
-    with st.expander("数据集样本", expanded=True):
+    with st.expander("数据集样本"):
         st.table(data_loader.get_sample_data())
     
-    if st.button("训练模型"):
+    if st.button("训练可信度分析模型"):
         model_pipeline = HealthKnowledgePipeline(data_loader.data)
-        model_pipeline.train_model()
-        model_pipeline.visualize_performance()
+        performance = model_pipeline.train_model()
+        st.text(performance['classification_report'])
+        
+        # 可视化混淆矩阵
+        fig, ax = plt.subplots(figsize=(6, 4))
+        sns.heatmap(performance['confusion_matrix'], annot=True, fmt='d', 
+                   cmap='Blues', ax=ax)
+        ax.set_title('模型混淆矩阵')
+        st.pyplot(fig)
     
-    # 模型预测部分
-    st.subheader("健康声明分析")
+    # 声明分析界面
     health_claim = st.text_area(
-        "输入健康声明进行可信度分析:", 
-        placeholder="例如: '研究表明每天饮用绿茶可降低心脏病风险30%'",
+        "输入需要分析的医学声明:", 
+        placeholder="例如：每天饮用绿茶可以降低心脏病风险30%",
         height=120
     )
     
     if st.button("分析可信度"):
-        if not health_claim:
-            st.warning("请输入健康声明内容")
-            return
-            
-        # 加载模型
         try:
             model = joblib.load('health_knowledge_model.pkl')
             report_gen = HealthCredibilityReport()
             
-            # 获取模型解释
-            explanation = {}
-            
-            # 特征贡献分析
+            # 获取特征值
             feature_engineer = model.named_steps['features']
             feature_values = feature_engineer.transform([health_claim])[0]
             
-            explanation['特征贡献分析'] = {
-                "文本长度": feature_values[0],
-                "可信度术语": feature_values[3],
-                "风险信号": feature_values[4],
-                "正面情感": feature_values[5],
-                "负面情感": feature_values[6],
-                "数字证据": feature_values[7],
-                "百分比证据": feature_values[8]
-            }
-            
-            # 可信度预测
+            # 预测可信度
             prediction = model.predict([health_claim])[0]
             prediction_proba = model.predict_proba([health_claim])[0]
-            credibility_score = prediction_proba[1] * 100 if prediction == 1 else prediction_proba[0] * 100
+            credibility_score = prediction_proba[1] * 100
             
             # 生成报告
             report = report_gen.generate_report(
                 claim=health_claim,
                 prediction=prediction,
-                explanation=explanation,
+                explanation={"特征值": feature_values.tolist()},
                 credibility_score=round(credibility_score, 1)
             )
             
             # 显示报告
-            report_gen.display_report(report)
+            col1, col2 = st.columns([1, 2])
+            with col1:
+                st.metric("可信度评分", f"{credibility_score:.1f}分")
+                st.progress(credibility_score/100)
+                
+            with col2:
+                st.markdown(f"**风险评估**: <span style='color:{report['risk_color']};'>{report['risk_level']}</span>", 
+                           unsafe_allow_html=True)
+                for factor in report['key_factors']:
+                    st.markdown(f"- {factor}")
             
-            # 保存到历史
+            # 建议部分
+            st.subheader("专业建议")
+            for rec in report['recommendations']:
+                if rec.startswith("✅"): st.success(rec)
+                elif rec.startswith("⚠️"): st.warning(rec)
+                else: st.error(rec)
+                
+            # 保存历史
             st.session_state.history.append({
                 "time": datetime.now().strftime("%Y-%m-%d %H:%M"),
                 "claim": health_claim[:100] + "..." if len(health_claim) > 100 else health_claim,
-                "score": round(credibility_score, 1),
-                "risk": report['risk_level']
+                "score": round(credibility_score, 1)
             })
-            
+                
         except Exception as e:
-            st.error(f"分析失败: {str(e)}")
+            st.error(f"分析过程出错: {str(e)}")
+            st.error("请确保数据集和模型已准备就绪")
     
-    # 历史记录
+    # 历史记录侧边栏
     st.sidebar.title("分析历史")
     if st.session_state.history:
-        for i, item in enumerate(st.session_state.history[-10:]):  # 最近10条
-            color = "green" if item['score'] > 70 else "orange" if item['score'] > 30 else "red"
+        for item in st.session_state.history[-5:]:
+            score = item['score']
+            color = "green" if score > 70 else "orange" if score > 30 else "red"
             st.sidebar.markdown(
-                f"<div style='border-left:4px solid {color};padding:5px;margin:5px;'>"
-                f"<small>{item['time']}</small><br>"
-                f"{item['claim']}<br>"
-                f"<strong>可信度: </strong><span style='color:{color};'>{item['score']}分</span>"
-                "</div>",
+                f"<div style='border-left:4px solid {color};padding:8px;margin:5px;'>"
+                f"{item['claim']}<br><small>{item['time']}</small><br>"
+                f"<strong>{score:.1f}分</strong></div>", 
                 unsafe_allow_html=True
             )
     else:
         st.sidebar.info("暂无分析历史")
     
-    # 专业资源
-    st.sidebar.title("专业医学资源")
-    st.sidebar.markdown("🔗 [世界卫生组织(WHO)](https://www.who.int)")
-    st.sidebar.markdown("🔗 [中国国家卫生健康委员会](http://www.nhc.gov.cn)")
-    st.sidebar.markdown("🔗 [美国疾病控制与预防中心(CDC)](https://www.cdc.gov)")
-    st.sidebar.markdown("🔗 [英国国家医疗服务体系(NHS)](https://www.nhs.uk)")
-    st.sidebar.markdown("🔗 [国家药品监督管理局](https://www.nmpa.gov.cn)")
-    
-    # 页脚
-    st.sidebar.divider()
-    st.sidebar.caption("© 2023 科学健康知识可信度分析系统 | v1.0")
+    # 专业资源区
+    st.sidebar.title("权威医学资源")
+    st.sidebar.markdown("[世界卫生组织(WHO)](https://www.who.int)")
+    st.sidebar.markdown("[中国国家卫健委](http://www.nhc.gov.cn)")
+    st.sidebar.markdown("[美国CDC](https://www.cdc.gov)")
 
-# 主程序入口
 if __name__ == "__main__":
     main_health_app()
