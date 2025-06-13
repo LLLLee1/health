@@ -49,7 +49,7 @@ class HealthDataLoader:
         categories = {
             '心血管健康': ['心脏', '血压', '胆固醇', '血脂', '中风'],
             '营养饮食': ['饮食', '营养', '维生素', '蛋白质', '脂肪', '碳水', '矿物质'],
-            '运动健身': ['运动', '锻炼', '健身', '有极客时间氧', '肌肉', '力量'],
+            '运动健身': ['运动', '锻炼', '健身', '有氧运动', '肌肉', '力量'],
             '心理健康': ['抑郁', '焦虑', '压力', '情绪', '睡眠', '心理'],
             '慢性病管理': ['糖尿病', '高血压', '关节炎', '管理', '控制', '慢性'],
             '癌症防治': ['癌症', '肿瘤', '抗癌', '转移', '化疗'],
@@ -275,7 +275,7 @@ class HealthCredibilityReport:
             "risk_color": risk_color,
             "risk_explanation": risk_explanation,
             "prediction": "可信度高" if prediction == 1 else "存在风险",
-            "health_topic极客时间": health_topic,
+            "health_topic": health_topic,
             "key_factors": key_factors,
             "recommendations": recommendations,
             "explanation": explanation
@@ -410,7 +410,7 @@ class HealthSystemExtensions:
             try:
                 model = joblib.load('health_knowledge_model.pkl')
                 for claim in claim_list:
-                    prediction_proba = model.predict_proba([claim])[极客时间0]
+                    prediction_proba = model.predict_proba([claim])[0]
                     risk_score = prediction_proba[0] * 100  # 不可信的概率作为风险值
                     risks.append(risk_score)
                 
