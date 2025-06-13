@@ -23,7 +23,7 @@ import jieba.analyse
 # 1. 数据加载器
 class HealthDataLoader:
     def __init__(self, file_path="medical_claims_20250613_162711.csv"):
-        self.file极客时间_path = file_path
+        self.file_path = file_path
         self.data = None
         
     def load_data(self):
