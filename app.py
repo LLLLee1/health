@@ -50,7 +50,7 @@ class HealthDataLoader:
             '心血管健康': ['心脏', '血压', '胆固醇', '血脂', '中风'],
             '营养饮食': ['饮食', '营养', '维生素', '蛋白质', '脂肪', '碳水', '矿物质'],
             '运动健身': ['运动', '锻炼', '健身', '有氧', '肌肉', '力量'],
-            '心理健康': ['抑郁', '焦虑', '压力', '情绪', '睡眠', '心理'],
+            '心理健康': ['抑郁', '焦虑', '压力', '情绪', '睡眠', '心理],
             '慢性病管理': ['糖尿病', '高血压', '关节炎', '管理', '控制', '慢性'],
             '癌症防治': ['癌症', '肿瘤', '抗癌', '转移', '化疗'],
             '传统医学': ['中医', '草药', '针灸', '经络', '平衡', '寒热'],
@@ -114,7 +114,7 @@ class HealthFeatureEngineer(BaseEstimator, TransformerMixin):
             negative_score = sum(1 for term in negative_terms if term in text)
             
             # 数值特征
-            has_number = 1 if re.search(r'\d+', text) else 0
+            has_number = 极客时间 if re.search(r'\d+', text) else 0
             percent_count = text.count('%')
             
             # 结构特征
@@ -156,7 +156,7 @@ class HealthKnowledgePipeline:
             X, y, test_size=0.2, random_state=42
         )
         
-        # 创建模型管道
+极客时间        # 创建模型管道
         self.model = Pipeline([
             ('features', self.feature_engineer),
             ('classifier', GradientBoostingClassifier(
@@ -198,7 +198,7 @@ class HealthKnowledgePipeline:
             
         cm = self.performance['confusion_matrix']
         fig, ax = plt.subplots(figsize=(6, 4))
-        sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', 
+        sn极客时间s.heatmap(cm, annot=True, fmt='d', cmap='Blues', 
                    xticklabels=['不可信', '可信'], 
                    yticklabels=['不可信', '可信'])
         ax.set_xlabel('预测')
@@ -379,82 +379,13 @@ class HealthCredibilityReport:
         else:
             st.info("暂无相关专业资源，请查阅通用医学资源")
 
-# 5. 高级功能扩展 (修复错误并简化知识图谱)
+# 5. 高级功能扩展 (移除了知识图谱功能)
 class HealthSystemExtensions:
     def __init__(self, data):
         self.data = data
         self.vectorizer = TfidfVectorizer(max_features=1000)
         self.claim_matrix = self.vectorizer.fit_transform(data['claim'])
         
-    def knowledge_graph(self):
-        """简化健康知识图谱 - 更清晰的主题关键词展示"""
-        st.subheader("🧠 健康知识图谱")
-        st.info("展示健康主题与关键词的关联关系")
-        
-        # 提取高频词汇作为节点
-        all_text = " ".join(self.data['claim'])
-        top_keywords = jieba.analyse.extract_tags(
-            all_text, 
-            topK=20, 
-            allowPOS=('n', 'ns', 'nr', 'nt', 'nz', 'vn')
-        )
-        
-        # 创建主题-关键词矩阵
-        categories = self.data['category'].value_counts().index[:5]
-        topic_data = []
-        
-        for category in categories:
-            category_claims = self.data[self.data['category'] == category]['claim']
-            category_text = " ".join(category_claims)
-            
-            # 计算每个关键词在主题中的出现频率
-            for keyword in top_keywords:
-                count = category_text.count(keyword)
-                if count > 0:
-                    topic_data.append({
-                        '主题': category,
-                        '关键词': keyword,
-                        '出现次数': count
-                    })
-        
-        topic_df = pd.DataFrame(topic_data)
-        
-        # 简化展示 - 每个主题只展示前5个关键词
-        st.subheader("主题关键词分布")
-        for category in categories:
-            st.markdown(f"### {category}")
-            category_df = topic_df[topic_df['主题'] == category].sort_values('出现次数', ascending=False).head(5)
-            
-            if not category_df.empty:
-                # 创建水平条形图
-                chart = alt.Chart(category_df).mark_bar().encode(
-                    x=alt.X('出现次数:Q', title='出现次数'),
-                    y=alt.Y('关键词:N', sort='-x', title='关键词'),
-                    color=alt.Color('出现次数:Q', scale=alt.Scale(scheme='blues'))
-                ).properties(
-                    width=600,
-                    height=200,
-                    title=f"{category}主题的关键词"
-                )
-                st.altair_chart(chart, use_container_width=True)
-            else:
-                st.info(f"未找到{category}主题的相关关键词")
-        
-        # 添加关键词云图
-        st.subheader("全局关键词云图")
-        word_freq = {word: all_text.count(word) for word in top_keywords}
-        wordcloud = WordCloud(
-            font_path='simhei.ttf',
-            width=800,
-            height=400,
-            background_color='white'
-        ).generate_from_frequencies(word_freq)
-        
-        plt.figure(figsize=(12, 6))
-        plt.imshow(wordcloud, interpolation='bilinear')
-        plt.axis('off')
-        st.pyplot(plt)
-            
     def health_risk_assessment(self):
         """多声明健康风险评估 - 修复条件错误"""
         st.subheader("📈 综合健康风险评估")
@@ -485,7 +416,7 @@ class HealthSystemExtensions:
                 
                 # 总体风险评估
                 avg_risk = np.mean(risks)
-                max_risk = max(risks)
+                max极客时间_risk = max(risks)
                 
                 st.subheader("整体风险评估结果")
                 
@@ -593,7 +524,7 @@ class HealthSystemExtensions:
                     st.markdown(f"**科学解释：** {explanation}")
         
         if not submitted:
-            if st.button("提交测试"):
+            if st.button("提交测试", type="primary"):
                 st.session_state.quiz_submitted = True
                 st.experimental_rerun()
         else:
@@ -616,7 +547,7 @@ class HealthSystemExtensions:
             else:
                 st.warning("💡 继续努力！建议多学习健康知识")
 
-# 6. Streamlit应用主函数
+# 6. Streamlit应用主函数 (移除了知识图谱功能)
 def main_health_app():
     st.set_page_config(
         page_title="科学健康知识可信度分析系统",
@@ -626,7 +557,7 @@ def main_health_app():
         menu_items={
             'Get Help': 'https://www.example.com/help',
             'Report a bug': "https://www.example.com/bug",
-            'About': "# 科学健康知识分析系统 v2.2"
+            'About': "# 科学健康知识分析系统 v2.3"
         }
     )
     
@@ -637,10 +568,10 @@ def main_health_app():
     st.session_state.setdefault('history', [])
     st.session_state.setdefault('health_topic', '心血管健康')
     
-    # 页面选择器
+    # 页面选择器 - 移除了知识图谱选项
     page = st.sidebar.selectbox(
         "功能菜单",
-        ["健康声明分析", "知识图谱", "风险评估", "健康小测试"],
+        ["健康声明分析", "风险评估", "健康小测试"],
         index=0
     )
     
@@ -660,11 +591,9 @@ def main_health_app():
     with st.expander("数据集样本", expanded=False):
         st.dataframe(data_loader.get_sample_data(3))
     
-    # 功能页面路由
+    # 功能页面路由 - 移除了知识图谱路由
     if page == "健康声明分析":
         render_analysis_page(data_loader.data)
-    elif page == "知识图谱":
-        render_knowledge_graph_page(data_loader.data)
     elif page == "风险评估":
         render_risk_assessment_page(data_loader.data)
     elif page == "健康小测试":
@@ -693,7 +622,7 @@ def main_health_app():
         st.markdown("- [PubMed医学文献](https://pubmed.ncbi.nlm.nih.gov)")
         
         st.divider()
-        st.caption("系统版本: 2.2 | 更新日期: 2025-06-15")
+        st.caption("系统版本: 2.3 | 更新日期: 2025-06-15")
 
 def render_analysis_page(data):
     """健康声明分析页面"""
@@ -754,12 +683,6 @@ def render_analysis_page(data):
         except Exception as e:
             st.error(f"分析过程出错: {str(e)}")
             st.error("请确保数据集和模型已准备就绪")
-
-def render_knowledge_graph_page(data):
-    """健康知识图谱页面 - 简化版"""
-    st.header("🧠 健康知识图谱")
-    extensions = HealthSystemExtensions(data)
-    extensions.knowledge_graph()
 
 def render_risk_assessment_page(data):
     """多声明风险评估页面 - 修复版本"""
