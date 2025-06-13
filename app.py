@@ -8,6 +8,7 @@ import re
 import jieba
 import json
 import matplotlib.pyplot as plt
+import seaborn as sns
 from datetime import datetime
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.ensemble import GradientBoostingClassifier
@@ -389,5 +390,4 @@ def test_chinese_processing():
 
 # 在主函数中调用测试
 if __name__ == "__main__":
-    print(test_chinese_processing())
     main_health_app()
