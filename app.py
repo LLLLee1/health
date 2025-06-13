@@ -114,7 +114,7 @@ class HealthFeatureEngineer(BaseEstimator, TransformerMixin):
             negative_score = sum(1 for term in negative_terms if term in text)
             
             # 数值特征
-            has_number = 极客时间 if re.search(r'\d+', text) else 0
+            has_number = if re.search(r'\d+', text) else 0
             percent_count = text.count('%')
             
             # 结构特征
