@@ -87,7 +87,7 @@ class HealthFeatureEngineer(BaseEstimator, TransformerMixin):
         self.warning_signals = [
             '秘方', '奇迹', '彻底治愈', '永不复发', '包治百病',
             '专家不说', '医院隐藏', '立即见效', '立即转发', '政府隐瞒',
-            '效果惊人', '神奇疗效', '祖传秘方', '绝对安全', '纯天然'
+            '效果惊人', '神奇疗效', '祖极客时间传秘方', '绝对安全', '纯天然'
         ]
         
     def fit(self, X, y=None):
@@ -156,8 +156,8 @@ class HealthKnowledgePipeline:
             X, y, test_size=0.2, random_state=42
         )
         
-        # 创建模型管道（此处需保持一致缩进）
-        self.model = Pipeline([  # 确保这行缩进与上面代码一致
+        # 创建模型管道
+        self.model = Pipeline([
             ('features', self.feature_engineer),
             ('classifier', GradientBoostingClassifier(
                 n_estimators=200,
@@ -167,8 +167,6 @@ class HealthKnowledgePipeline:
                 random_state=42
             ))
         ])
-        
-        
         
         # 训练模型
         with st.spinner("模型训练中，请稍候..."):
@@ -224,7 +222,7 @@ class HealthCredibilityReport:
             "心血管健康": ["心脏", "血压", "血脂", "胆固醇", "中风"],
             "营养饮食": ["饮食", "营养", "维生素", "蛋白质", "脂肪"],
             "运动健身": ["运动", "锻炼", "健身", "有氧", "肌肉"],
-            "心理健康": ["压力", "抑郁", "焦虑", "睡眠", "情绪"],
+            "心理健康": ["压力", "抑郁", "焦虑", "睡眠", "极客时间情绪"],
             "慢性病管理": ["糖尿病", "高血压", "关节炎", "管理", "控制"]
         }
         
@@ -318,7 +316,7 @@ class HealthCredibilityReport:
                 st.markdown(f"- {factor}")
             
             # 特征详情
-            if 'explanation' in report and '特征值' in report['explanation']:
+            if 'explanation' in report and '特征极客时间值' in report['explanation']:
                 st.subheader("技术特征分析")
                 features = [
                     "文本长度", "英文字符数", "中文字符数", "可信术语数", 
@@ -381,7 +379,7 @@ class HealthCredibilityReport:
         else:
             st.info("暂无相关专业资源，请查阅通用医学资源")
 
-# 5. 高级功能扩展 (移除了知识图谱功能)
+# 5. 高级功能扩展
 class HealthSystemExtensions:
     def __init__(self, data):
         self.data = data
@@ -389,7 +387,7 @@ class HealthSystemExtensions:
         self.claim_matrix = self.vectorizer.fit_transform(data['claim'])
         
     def health_risk_assessment(self):
-        """多声明健康风险评估 - 修复条件错误"""
+        """多声明健康风险评估"""
         st.subheader("📈 综合健康风险评估")
         st.info("输入多份健康信息，评估整体风险")
         
@@ -418,21 +416,21 @@ class HealthSystemExtensions:
                 
                 # 总体风险评估
                 avg_risk = np.mean(risks)
-                max极客时间_risk = max(risks)
+                max_risk = max(risks)
                 
                 st.subheader("整体风险评估结果")
                 
                 col1, col2 = st.columns(2)
                 col1.metric("平均风险值", f"{avg_risk:.1f}分")
-                col2.metric("最高风险声明", f"{max_risk:.1f}分")
+                col2.metric("最高风险声明", f"{max_risk:.1极客时间f}分")
                 
-                # 风险可视化 - 修复条件语句错误
+                # 风险可视化
                 risk_data = pd.DataFrame({
                     '声明': [f"声明{i+1}" for i in range(len(risks))],
                     '风险值': risks
                 })
                 
-                # 添加风险类别列 - 简化条件逻辑
+                # 添加风险类别列
                 risk_data['风险类别'] = risk_data['风险值'].apply(
                     lambda x: '高风险' if x > 70 
                     else '中风险' if x > 40 
@@ -476,11 +474,11 @@ class HealthSystemExtensions:
             st.dataframe(history_df.sort_values('timestamp', ascending=False).head(5))
     
     def health_quiz(self):
-        """健康知识小测试 - 修复AttributeError"""
+        """健康知识小测试"""
         st.subheader("🧪 健康知识小测验")
         st.info("测试您的健康知识水平，识别伪科学信息")
         
-        # 从数据集中选择问题 - 重置索引避免AttributeError
+        # 从数据集中选择问题
         quiz_questions = self.data.sample(3)[['claim', 'credibility', 'explanation']].reset_index(drop=True)
         
         if st.button("生成新测试"):
@@ -498,7 +496,7 @@ class HealthSystemExtensions:
         
         for i in range(len(questions)):
             st.subheader(f"问题 {i+1}")
-            # 安全访问行数据 - 修复AttributeError
+            # 安全访问行数据
             row = questions.iloc[i]
             claim = row['claim']
             st.markdown(f"**健康声明：** {claim}")
@@ -549,7 +547,7 @@ class HealthSystemExtensions:
             else:
                 st.warning("💡 继续努力！建议多学习健康知识")
 
-# 6. Streamlit应用主函数 (移除了知识图谱功能)
+# 6. Streamlit应用主函数
 def main_health_app():
     st.set_page_config(
         page_title="科学健康知识可信度分析系统",
@@ -559,7 +557,7 @@ def main_health_app():
         menu_items={
             'Get Help': 'https://www.example.com/help',
             'Report a bug': "https://www.example.com/bug",
-            'About': "# 科学健康知识分析系统 v2.3"
+            'About': "# 科学健康知识分析系统 v2.4"
         }
     )
     
@@ -570,7 +568,7 @@ def main_health_app():
     st.session_state.setdefault('history', [])
     st.session_state.setdefault('health_topic', '心血管健康')
     
-    # 页面选择器 - 移除了知识图谱选项
+    # 页面选择器
     page = st.sidebar.selectbox(
         "功能菜单",
         ["健康声明分析", "风险评估", "健康小测试"],
@@ -593,7 +591,7 @@ def main_health_app():
     with st.expander("数据集样本", expanded=False):
         st.dataframe(data_loader.get_sample_data(3))
     
-    # 功能页面路由 - 移除了知识图谱路由
+    # 功能页面路由
     if page == "健康声明分析":
         render_analysis_page(data_loader.data)
     elif page == "风险评估":
@@ -624,7 +622,7 @@ def main_health_app():
         st.markdown("- [PubMed医学文献](https://pubmed.ncbi.nlm.nih.gov)")
         
         st.divider()
-        st.caption("系统版本: 2.3 | 更新日期: 2025-06-15")
+        st.caption("系统版本: 2.4 | 更新日期: 2025-06-15")
 
 def render_analysis_page(data):
     """健康声明分析页面"""
@@ -678,7 +676,7 @@ def render_analysis_page(data):
             # 保存历史
             st.session_state.history.append({
                 "time": datetime.now().strftime("%Y-%m-%d %H:%M"),
-                "claim": health_claim[:100] + "..." if len(health_claim) > 100 else health_claim,
+                "claim": health_claim[:100] + "..." if len(health_claim) > 100 else health极客时间_claim,
                 "score": round(credibility_score, 1)
             })
                 
@@ -687,13 +685,13 @@ def render_analysis_page(data):
             st.error("请确保数据集和模型已准备就绪")
 
 def render_risk_assessment_page(data):
-    """多声明风险评估页面 - 修复版本"""
+    """多声明风险评估页面"""
     st.header("📈 综合健康风险评估")
     extensions = HealthSystemExtensions(data)
     extensions.health_risk_assessment()
 
 def render_quiz_page(data):
-    """健康知识小测试页面 - 修复版本"""
+    """健康知识小测试页面"""
     st.header("🧪 健康知识小测验")
     extensions = HealthSystemExtensions(data)
     extensions.health_quiz()
