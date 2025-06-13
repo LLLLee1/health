@@ -23,7 +23,7 @@ import jieba.analyse
 # 1. 数据加载器
 class HealthDataLoader:
     def __init__(self, file_path="medical_claims_20250613_162711.csv"):
-        self.file_path = file_path
+        self.file极客时间_path = file_path
         self.data = None
         
     def load_data(self):
@@ -49,7 +49,7 @@ class HealthDataLoader:
         categories = {
             '心血管健康': ['心脏', '血压', '胆固醇', '血脂', '中风'],
             '营养饮食': ['饮食', '营养', '维生素', '蛋白质', '脂肪', '碳水', '矿物质'],
-            '运动健身': ['运动', '锻炼', '健身', '有氧', '肌肉', '力量'],
+            '运动健身': ['运动', '锻炼', '健身', '有极客时间氧', '肌肉', '力量'],
             '心理健康': ['抑郁', '焦虑', '压力', '情绪', '睡眠', '心理'],
             '慢性病管理': ['糖尿病', '高血压', '关节炎', '管理', '控制', '慢性'],
             '癌症防治': ['癌症', '肿瘤', '抗癌', '转移', '化疗'],
@@ -87,7 +87,7 @@ class HealthFeatureEngineer(BaseEstimator, TransformerMixin):
         self.warning_signals = [
             '秘方', '奇迹', '彻底治愈', '永不复发', '包治百病',
             '专家不说', '医院隐藏', '立即见效', '立即转发', '政府隐瞒',
-            '效果惊人', '神奇疗效', '祖极客时间传秘方', '绝对安全', '纯天然'
+            '效果惊人', '神奇疗效', '祖传秘方', '绝对安全', '纯天然'
         ]
         
     def fit(self, X, y=None):
@@ -150,7 +150,7 @@ class HealthKnowledgePipeline:
         """训练专业健康知识模型"""
         # 准备数据
         X = self.data['claim']
-        y = self.data['credibility'].apply(lambda x: 1 if x > 0.7 else 0)
+        y = self.data['credibility'].apply(lambda x: 1 if x > 0.7 else 0)  # 1为可信，0为不可信
         
         X_train, X_test, y_train, y_test = train_test_split(
             X, y, test_size=0.2, random_state=42
@@ -222,7 +222,7 @@ class HealthCredibilityReport:
             "心血管健康": ["心脏", "血压", "血脂", "胆固醇", "中风"],
             "营养饮食": ["饮食", "营养", "维生素", "蛋白质", "脂肪"],
             "运动健身": ["运动", "锻炼", "健身", "有氧", "肌肉"],
-            "心理健康": ["压力", "抑郁", "焦虑", "睡眠", "极客时间情绪"],
+            "心理健康": ["压力", "抑郁", "焦虑", "睡眠", "情绪"],
             "慢性病管理": ["糖尿病", "高血压", "关节炎", "管理", "控制"]
         }
         
@@ -275,7 +275,7 @@ class HealthCredibilityReport:
             "risk_color": risk_color,
             "risk_explanation": risk_explanation,
             "prediction": "可信度高" if prediction == 1 else "存在风险",
-            "health_topic": health_topic,
+            "health_topic极客时间": health_topic,
             "key_factors": key_factors,
             "recommendations": recommendations,
             "explanation": explanation
@@ -316,7 +316,7 @@ class HealthCredibilityReport:
                 st.markdown(f"- {factor}")
             
             # 特征详情
-            if 'explanation' in report and '特征极客时间值' in report['explanation']:
+            if 'explanation' in report and '特征值' in report['explanation']:
                 st.subheader("技术特征分析")
                 features = [
                     "文本长度", "英文字符数", "中文字符数", "可信术语数", 
@@ -379,7 +379,7 @@ class HealthCredibilityReport:
         else:
             st.info("暂无相关专业资源，请查阅通用医学资源")
 
-# 5. 高级功能扩展
+# 5. 高级功能扩展 (移除了知识图谱和健康小测试功能)
 class HealthSystemExtensions:
     def __init__(self, data):
         self.data = data
@@ -410,7 +410,7 @@ class HealthSystemExtensions:
             try:
                 model = joblib.load('health_knowledge_model.pkl')
                 for claim in claim_list:
-                    prediction_proba = model.predict_proba([claim])[0]
+                    prediction_proba = model.predict_proba([claim])[极客时间0]
                     risk_score = prediction_proba[0] * 100  # 不可信的概率作为风险值
                     risks.append(risk_score)
                 
@@ -422,7 +422,7 @@ class HealthSystemExtensions:
                 
                 col1, col2 = st.columns(2)
                 col1.metric("平均风险值", f"{avg_risk:.1f}分")
-                col2.metric("最高风险声明", f"{max_risk:.1极客时间f}分")
+                col2.metric("最高风险声明", f"{max_risk:.1f}分")
                 
                 # 风险可视化
                 risk_data = pd.DataFrame({
@@ -472,82 +472,8 @@ class HealthSystemExtensions:
             st.subheader("历史评估记录")
             history_df = pd.DataFrame(st.session_state['risk_history'])
             st.dataframe(history_df.sort_values('timestamp', ascending=False).head(5))
-    
-    def health_quiz(self):
-        """健康知识小测试"""
-        st.subheader("🧪 健康知识小测验")
-        st.info("测试您的健康知识水平，识别伪科学信息")
-        
-        # 从数据集中选择问题
-        quiz_questions = self.data.sample(3)[['claim', 'credibility', 'explanation']].reset_index(drop=True)
-        
-        if st.button("生成新测试"):
-            st.session_state.quiz_questions = quiz_questions
-            st.session_state.user_answers = [None] * len(quiz_questions)
-            st.session_state.quiz_submitted = False
-        
-        if 'quiz_questions' not in st.session_state:
-            st.write("点击上方按钮生成测试题")
-            return
-            
-        questions = st.session_state.quiz_questions
-        user_answers = st.session_state.user_answers
-        submitted = st.session_state.quiz_submitted
-        
-        for i in range(len(questions)):
-            st.subheader(f"问题 {i+1}")
-            # 安全访问行数据
-            row = questions.iloc[i]
-            claim = row['claim']
-            st.markdown(f"**健康声明：** {claim}")
-            
-            if not submitted:
-                options = ['非常可信', '比较可信', '不确定', '不太可信', '非常不可信']
-                user_answers[i] = st.radio(
-                    f"您认为这个声明的可信度如何？",
-                    options,
-                    key=f"quiz_q{i}"
-                )
-            else:
-                credibility = row['credibility']
-                correct_answer = '非常可信' if credibility > 0.8 else '比较可信' if credibility > 0.6 else '不太可信' if credibility > 0.4 else '非常不可信'
-                user_answer = user_answers[i]
-                
-                st.info(f"您的选择: **{user_answer}**")
-                if user_answer == correct_answer:
-                    st.success(f"✅ 正确！实际可信度: {credibility:.2f}")
-                else:
-                    st.error(f"❌ 错误，正确选项是: **{correct_answer}** (实际可信度: {credibility:.2f})")
-                
-                with st.expander("查看解释"):
-                    explanation = row['explanation']
-                    st.markdown(f"**科学解释：** {explanation}")
-        
-        if not submitted:
-            if st.button("提交测试", type="primary"):
-                st.session_state.quiz_submitted = True
-                st.experimental_rerun()
-        else:
-            # 计算得分
-            correct_count = 0
-            for i in range(len(questions)):
-                credibility = questions.iloc[i]['credibility']
-                correct_answer = '非常可信' if credibility > 0.8 else '比较可信' if credibility > 0.6 else '不太可信' if credibility > 0.4 else '非常不可信'
-                if user_answers[i] == correct_answer:
-                    correct_count += 1
-            
-            score = correct_count / len(questions) * 100
-            
-            st.success(f"📝 测试完成！您的得分: **{score:.0f}分**")
-            if score >= 80:
-                st.balloons()
-                st.success("🎉 优秀！您对健康知识有很高的辨别能力")
-            elif score >= 60:
-                st.info("👍 良好！您对健康信息有一定判断能力")
-            else:
-                st.warning("💡 继续努力！建议多学习健康知识")
 
-# 6. Streamlit应用主函数
+# 6. Streamlit应用主函数 (移除了健康小测试功能)
 def main_health_app():
     st.set_page_config(
         page_title="科学健康知识可信度分析系统",
@@ -557,21 +483,21 @@ def main_health_app():
         menu_items={
             'Get Help': 'https://www.example.com/help',
             'Report a bug': "https://www.example.com/bug",
-            'About': "# 科学健康知识分析系统 v2.4"
+            'About': "# 科学健康知识分析系统 v2.5"
         }
     )
     
     st.title("🩺 科学健康知识可信度分析系统")
-    st.caption("基于专业健康声明的可信度分析与知识发现")
+    st.caption("基于专业健康声明的可信度分析与风险发现")
     
     # 初始化状态
     st.session_state.setdefault('history', [])
     st.session_state.setdefault('health_topic', '心血管健康')
     
-    # 页面选择器
+    # 页面选择器 - 只保留两个核心功能
     page = st.sidebar.selectbox(
         "功能菜单",
-        ["健康声明分析", "风险评估", "健康小测试"],
+        ["健康声明分析", "综合风险评估"],
         index=0
     )
     
@@ -591,13 +517,11 @@ def main_health_app():
     with st.expander("数据集样本", expanded=False):
         st.dataframe(data_loader.get_sample_data(3))
     
-    # 功能页面路由
+    # 功能页面路由 - 只保留两个核心功能
     if page == "健康声明分析":
         render_analysis_page(data_loader.data)
-    elif page == "风险评估":
+    elif page == "综合风险评估":
         render_risk_assessment_page(data_loader.data)
-    elif page == "健康小测试":
-        render_quiz_page(data_loader.data)
     
     # 侧边栏区域
     with st.sidebar:
@@ -622,7 +546,7 @@ def main_health_app():
         st.markdown("- [PubMed医学文献](https://pubmed.ncbi.nlm.nih.gov)")
         
         st.divider()
-        st.caption("系统版本: 2.4 | 更新日期: 2025-06-15")
+        st.caption("系统版本: 2.5 | 更新日期: 2025-07-10")
 
 def render_analysis_page(data):
     """健康声明分析页面"""
@@ -676,7 +600,7 @@ def render_analysis_page(data):
             # 保存历史
             st.session_state.history.append({
                 "time": datetime.now().strftime("%Y-%m-%d %H:%M"),
-                "claim": health_claim[:100] + "..." if len(health_claim) > 100 else health极客时间_claim,
+                "claim": health_claim[:100] + "..." if len(health_claim) > 100 else health_claim,
                 "score": round(credibility_score, 1)
             })
                 
@@ -685,16 +609,10 @@ def render_analysis_page(data):
             st.error("请确保数据集和模型已准备就绪")
 
 def render_risk_assessment_page(data):
-    """多声明风险评估页面"""
+    """综合风险评估页面"""
     st.header("📈 综合健康风险评估")
     extensions = HealthSystemExtensions(data)
     extensions.health_risk_assessment()
-
-def render_quiz_page(data):
-    """健康知识小测试页面"""
-    st.header("🧪 健康知识小测验")
-    extensions = HealthSystemExtensions(data)
-    extensions.health_quiz()
 
 # 运行主应用
 if __name__ == "__main__":
