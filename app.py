@@ -9,6 +9,7 @@ import jieba
 import json
 import matplotlib.pyplot as plt
 import seaborn as sns
+import plotly.express as px
 from datetime import datetime
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.ensemble import GradientBoostingClassifier
@@ -16,6 +17,13 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
 from sklearn.pipeline import Pipeline
 from sklearn.base import BaseEstimator, TransformerMixin
+from sklearn.cluster import KMeans
+from sklearn.neighbors import NearestNeighbors
+import altair as alt
+import networkx as nx
+import plotly.graph_objects as go
+from wordcloud import WordCloud
+import jieba.analyse
 
 # 1. 数据加载器
 class HealthDataLoader:
@@ -26,14 +34,45 @@ class HealthDataLoader:
     def load_data(self):
         try:
             self.data = pd.read_csv(self.file_path)
+            
+            # 添加健康声明类别
+            self.data['category'] = self.data['claim'].apply(self.classify_claim)
+            
             st.success(f"✅ 成功加载数据集: {len(self.data)}条健康声明")
             return True
         except Exception as e:
             st.error(f"数据加载失败: {str(e)}")
             return False
         
+    def classify_claim(self, claim):
+        """自动分类健康声明到健康领域"""
+        # 基于关键词的简单分类
+        categories = {
+            '心血管健康': ['心脏', '血压', '胆固醇', '血脂', '中风'],
+            '营养饮食': ['饮食', '营养', '维生素', '蛋白质', '脂肪', '碳水', '矿物质'],
+            '运动健身': ['运动', '锻炼', '健身', '有氧', '肌肉', '力量'],
+            '心理健康': ['抑郁', '焦虑', '压力', '情绪', '睡眠', '心理'],
+            '慢性病管理': ['糖尿病', '高血压', '关节炎', '管理', '控制', '慢性'],
+            '癌症防治': ['癌症', '肿瘤', '抗癌', '转移', '化疗'],
+            '传统医学': ['中医', '草药', '针灸', '经络', '平衡', '寒热'],
+            '儿科健康': ['儿童', '发育', '疫苗', '喂养', '早教'],
+            '老年健康': ['老年', '老龄', '退休', '关节', '认知'],
+        }
+        
+        for category, keywords in categories.items():
+            if any(keyword in claim for keyword in keywords):
+                return category
+        
+        return '其他'
+    
+    def get_categories(self):
+        """获取数据中的健康声明类别"""
+        if self.data is not None and 'category' in self.data.columns:
+            return self.data['category'].value_counts()
+        return None
+        
     def get_sample_data(self, n=5):
-        return self.data.sample(n)[['claim', 'credibility']]
+        return self.data.sample(n)[['claim', 'credibility', 'category']]
 
 # 2. 专业特征工程（结合医学知识）
 class HealthFeatureEngineer(BaseEstimator, TransformerMixin):
@@ -180,18 +219,38 @@ class HealthCredibilityReport:
             "evidence_based": "包含数据支撑: 有具体数值或百分比",
             "unrealistic": "检测到不切实际的承诺: 彻底治愈、永不复发等"
         }
+        self.topic_keywords = {
+            "心血管健康": ["心脏", "血压", "血脂", "胆固醇", "中风"],
+            "营养饮食": ["饮食", "营养", "维生素", "蛋白质", "脂肪"],
+            "运动健身": ["运动", "锻炼", "健身", "有氧", "肌肉"],
+            "心理健康": ["压力", "抑郁", "焦虑", "睡眠", "情绪"],
+            "慢性病管理": ["糖尿病", "高血压", "关节炎", "管理", "控制"]
+        }
+        
+    def identify_topic(self, claim):
+        """识别健康声明的主题领域"""
+        for topic, keywords in self.topic_keywords.items():
+            if any(keyword in claim for keyword in keywords):
+                return topic
+        return "其他健康领域"
         
     def generate_report(self, claim, prediction, explanation, credibility_score):
         """生成专业健康声明评估报告"""
+        # 识别主题
+        health_topic = self.identify_topic(claim)
+        
         # 可信度等级
         risk_level = "低风险"
         risk_color = "green"
+        risk_explanation = "该声明可信度高，可作为参考"
         if credibility_score < 30:
             risk_level = "高风险"
             risk_color = "red"
+            risk_explanation = "高风险声明，请谨慎对待并核实来源"
         elif credibility_score < 70:
             risk_level = "中等风险"
             risk_color = "orange"
+            risk_explanation = "中等风险，需进一步验证信息来源"
         
         # 关键影响因素
         key_factors = []
@@ -203,19 +262,21 @@ class HealthCredibilityReport:
         recommendations = []
         if prediction == 1:  # 可信
             if credibility_score > 90:
-                recommendations.append("✅ 可信度极高，可作为可靠健康参考")
+                recommendations.append(f"✅ 可信度极高 ({credibility_score}分)，可作为{health_topic}领域的可靠参考")
             else:
-                recommendations.append("⚠️ 信息基本可信，建议确认最新医学指南")
+                recommendations.append(f"⚠️ 信息基本可信 ({credibility_score}分)，建议确认{health_topic}领域的最新医学指南")
         else:  # 不可信
-            recommendations.append("❌ 可信度不足，请勿直接采纳")
-            recommendations.append("🔍 建议查询专业医学资源：WHO、国家卫健委等")
+            recommendations.append(f"❌ 可信度不足 ({credibility_score}分)，请勿直接采纳")
+            recommendations.append(f"🔍 建议查询{health_topic}领域的专业医学资源")
         
         return {
             "claim": claim,
             "credibility_score": credibility_score,
             "risk_level": risk_level,
             "risk_color": risk_color,
+            "risk_explanation": risk_explanation,
             "prediction": "可信度高" if prediction == 1 else "存在风险",
+            "health_topic": health_topic,
             "key_factors": key_factors,
             "recommendations": recommendations,
             "explanation": explanation
@@ -226,7 +287,7 @@ class HealthCredibilityReport:
         st.subheader("健康声明评估报告")
         
         # 整体评分
-        col1, col2 = st.columns([1, 2])
+        col1, col2, col3 = st.columns([1,2,1])
         with col1:
             st.metric("可信度评分", f"{report['credibility_score']}分")
             st.markdown(
@@ -235,72 +296,484 @@ class HealthCredibilityReport:
                 unsafe_allow_html=True
             )
         
-        # 关键因素
+        # 健康主题和风险解释
         with col2:
-            st.subheader("影响因素分析")
+            st.subheader("主题领域")
+            st.markdown(f"**{report['health_topic']}**")
+            
+            st.subheader("风险说明")
+            st.info(f"{report['risk_explanation']}")
+        
+        # 声明显示
+        with col3:
+            st.caption("被评估声明")
+            st.info(f"**{report['claim']}**")
+        
+        st.divider()
+        
+        # 关键因素
+        with st.expander("🔍 影响因素分析", expanded=True):
             for factor in report.get('key_factors', []):
                 st.markdown(f"- {factor}")
+            
+            # 特征详情
+            if 'explanation' in report and '特征值' in report['explanation']:
+                st.subheader("技术特征分析")
+                features = [
+                    "文本长度", "英文字符数", "中文字符数", "可信术语数", 
+                    "风险信号数", "正面情感词", "负面情感词", "包含数字", 
+                    "百分比数量", "句子数量"
+                ]
+                for i, feat in enumerate(features):
+                    value = report['explanation']['特征值'][i]
+                    st.markdown(f"- **{feat}**: {value}")
         
         # 建议与解释
         st.subheader("专业建议")
-        for rec in report.get('recommendations', []):
-            if rec.startswith("✅"):
-                st.success(rec)
-            elif rec.startswith("⚠️"):
-                st.warning(rec)
-            else:
-                st.error(rec)
-        
-        # 详细解释
-        with st.expander("技术分析详情"):
-            for key, value in report.get('explanation', {}).items():
-                if isinstance(value, list):
-                    st.markdown(f"**{key}**:")
-                    for item in value[:3]:
-                        st.markdown(f"- {item}")
-                elif isinstance(value, dict):
-                    st.markdown(f"**{key}**:")
-                    for k, v in value.items():
-                        st.markdown(f"- {k}: {v}")
+        rec_cols = st.columns(2)
+        for i, rec in enumerate(report.get('recommendations', [])):
+            with rec_cols[i % 2]:
+                if rec.startswith("✅"):
+                    st.success(rec)
+                elif rec.startswith("⚠️"):
+                    st.warning(rec)
                 else:
-                    st.markdown(f"**{key}**: {value}")
+                    st.error(rec)
+        
+        # 相关资源
+        with st.expander("🩺 主题健康资源"):
+            self.display_health_resources(report['health_topic'])
+    
+    def display_health_resources(self, topic):
+        """显示主题相关健康资源"""
+        resources = {
+            "心血管健康": [
+                ("中国心血管健康联盟", "https://www.csca.org.cn"),
+                ("美国心脏协会", "https://www.heart.org"),
+                ("心脏健康手册", "https://www.nhlbi.nih.gov/health-topics/all-publications-and-resources")
+            ],
+            "营养饮食": [
+                ("中国营养学会", "https://www.cnsoc.org"),
+                ("营养与饮食学会", "https://www.eatright.org"),
+                ("健康饮食指南", "https://www.who.int/publications-detail-redirect/9789240063457")
+            ],
+            "运动健身": [
+                ("中国体育科学学会", "http://www.csss.cn"),
+                ("美国运动医学会", "https://www.acsm.org"),
+                ("运动处方指南", "https://www.health.gov/paguidelines")
+            ],
+            "心理健康": [
+                ("中国心理卫生协会", "http://www.camh.org.cn"),
+                ("世界心理卫生联盟", "https://wfme.org"),
+                ("心理健康自助手册", "https://www.who.int/publications-detail-redirect/9789240031029")
+            ],
+            "慢性病管理": [
+                ("中国慢性病管理网", "http://www.chronicdisease.org.cn"),
+                ("美国慢性病管理协会", "https://www.pcpcc.org"),
+                ("慢性病自我管理指南", "https://www.cdc.gov/chronicdisease/index.htm")
+            ]
+        }
+        
+        if topic in resources:
+            for name, url in resources[topic]:
+                st.markdown(f"🔗 [{name}]({url})")
+        else:
+            st.info("暂无相关专业资源，请查阅通用医学资源")
 
-# 5. Streamlit应用主函数
+# 5. 高级功能扩展
+class HealthSystemExtensions:
+    def __init__(self, data):
+        self.data = data
+        self.vectorizer = TfidfVectorizer(max_features=1000)
+        self.claim_matrix = self.vectorizer.fit_transform(data['claim'])
+        
+    def knowledge_graph(self):
+        """创建健康知识图谱"""
+        st.subheader("🧠 健康知识图谱")
+        st.info("展示健康主题之间的关联关系")
+        
+        # 提取高频词汇作为节点
+        all_text = " ".join(self.data['claim'])
+        top_keywords = jieba.analyse.extract_tags(
+            all_text, 
+            topK=30, 
+            allowPOS=('n', 'ns', 'nr', 'nt', 'nz', 'vn')
+        )
+        
+        # 创建图谱
+        G = nx.Graph()
+        
+        # 添加节点
+        for keyword in top_keywords:
+            G.add_node(keyword, size=10, type='keyword')
+        
+        # 添加主题节点
+        categories = self.data['category'].value_counts().index[:5]
+        for category in categories:
+            G.add_node(category, size=20, type='category')
+        
+        # 添加边（主题-关键词关联）
+        for category in categories:
+            category_claims = self.data[self.data['category'] == category]['claim']
+            category_text = " ".join(category_claims)
+            category_words = jieba.lcut(category_text)
+            for word in top_keywords:
+                if word in category_words:
+                    G.add_edge(category, word, weight=5)
+        
+        # 可视化图谱
+        pos = nx.spring_layout(G, k=0.3, iterations=50)
+        
+        edge_x = []
+        edge_y = []
+        for edge in G.edges():
+            x0, y0 = pos[edge[0]]
+            x1, y1 = pos[edge[1]]
+            edge_x.extend([x0, x1, None])
+            edge_y.extend([y0, y1, None])
+        
+        edge_trace = go.Scatter(
+            x=edge_x, y=edge_y,
+            line=dict(width=0.5, color='#888'),
+            hoverinfo='none',
+            mode='lines')
+        
+        node_x = []
+        node_y = []
+        node_text = []
+        node_size = []
+        node_color = []
+        for node in G.nodes():
+            x, y = pos[node]
+            node_x.append(x)
+            node_y.append(y)
+            node_text.append(node)
+            node_size.append(G.nodes[node]['size'] * 10)
+            node_color.append('blue' if G.nodes[node]['type'] == 'category' else 'green')
+        
+        node_trace = go.Scatter(
+            x=node_x, y=node_y,
+            mode='markers+text',
+            text=node_text,
+            textposition="top center",
+            marker=dict(
+                showscale=True,
+                colorscale='YlGnBu',
+                size=node_size,
+                color=node_color,
+                line_width=2))
+        
+        fig = go.Figure(data=[edge_trace, node_trace],
+                        layout=go.Layout(
+                            showlegend=False,
+                            hovermode='closest',
+                            margin=dict(b=0,l=0,r=0,t=0),
+                            xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+                            yaxis=dict(showgrid=False, zeroline=False, showticklabels=False))
+        )
+        
+        st.plotly_chart(fig, use_container_width=True)
+        
+        # 图谱探索
+        st.subheader("探索知识图谱")
+        selected_nodes = st.multiselect("选择节点查看关联", list(G.nodes()))
+        
+        if selected_nodes:
+            col1, col2 = st.columns(2)
+            with col1:
+                st.subheader("选择的节点")
+                for node in selected_nodes:
+                    st.markdown(f"- **{node}**（{'主题' if G.nodes[node]['type'] == 'category' else '关键词'}）")
+            
+            with col2:
+                st.subheader("关联节点")
+                for node in selected_nodes:
+                    neighbors = list(G.neighbors(node))
+                    if neighbors:
+                        st.markdown(f"**{node}**的关联:")
+                        st.caption(", ".join(neighbors))
+    
+    def health_risk_assessment(self):
+        """多声明健康风险评估"""
+        st.subheader("📈 综合健康风险评估")
+        st.info("输入多份健康信息，评估整体风险")
+        
+        claims = st.text_area(
+            "输入多个健康声明（每行一条）",
+            height=150,
+            placeholder="例如:\n每天喝红酒有益心脏健康\n高脂肪饮食会增加心脏病风险\n维生素C可以预防感冒",
+            key="multi_claims"
+        )
+        
+        if st.button("评估整体风险"):
+            if not claims.strip():
+                st.warning("请输入健康声明内容")
+                return
+                
+            claim_list = [c.strip() for c in claims.split("\n") if c.strip()]
+            
+            # 评估每条声明的风险
+            risks = []
+            try:
+                model = joblib.load('health_knowledge_model.pkl')
+                for claim in claim_list:
+                    prediction_proba = model.predict_proba([claim])[0]
+                    risk_score = prediction_proba[0] * 100  # 不可信的概率作为风险值
+                    risks.append(risk_score)
+                
+                # 总体风险评估
+                avg_risk = np.mean(risks)
+                max_risk = max(risks)
+                
+                st.subheader("整体风险评估结果")
+                
+                col1, col2 = st.columns(2)
+                col1.metric("平均风险值", f"{avg_risk:.1f}分")
+                col2.metric("最高风险声明", f"{max_risk:.1f}分")
+                
+                # 风险可视化
+                risk_data = pd.DataFrame({
+                    '声明': [f"声明{i+1}" for i in range(len(risks))],
+                    '风险值': risks
+                })
+                
+                risk_chart = alt.Chart(risk_data).mark_bar().encode(
+                    x=alt.X('声明:N', sort='-y'),
+                    y=alt.Y('风险值:Q', scale=alt.Scale(domain=[0, 100])),
+                    color=alt.condition(
+                        alt.datum['风险值'] > 70, alt.value('red'),
+                        alt.condition(alt.datum['风险值'] > 40, alt.value('orange'), alt.value('green'))
+                    ),
+                    tooltip=['声明', '风险值']
+                ).properties(
+                    width=600,
+                    height=300
+                )
+                st.altair_chart(risk_chart, use_container_width=True)
+                
+                # 风险声明分析
+                max_risk_index = np.argmax(risks)
+                st.warning(f"**最高风险声明**: {claim_list[max_risk_index]} (风险值: {risks[max_risk_index]:.1f}分)")
+                
+                # 存储评估结果
+                timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
+                st.session_state.setdefault('risk_history', []).append({
+                    "timestamp": timestamp,
+                    "claims": claim_list,
+                    "avg_risk": avg_risk,
+                    "max_risk": max_risk
+                })
+                
+            except Exception as e:
+                st.error(f"风险评估失败: {str(e)}")
+        
+        # 显示历史评估记录
+        if 'risk_history' in st.session_state and st.session_state['risk_history']:
+            st.subheader("历史评估记录")
+            history_df = pd.DataFrame(st.session_state['risk_history'])
+            st.dataframe(history_df.sort_values('timestamp', ascending=False).head(5))
+    
+    def health_quiz(self):
+        """健康知识小测试"""
+        st.subheader("🧪 健康知识小测验")
+        st.info("测试您的健康知识水平，识别伪科学信息")
+        
+        # 从数据集中选择问题
+        quiz_questions = self.data.sample(3)[['claim', 'credibility', 'explanation']]
+        
+        if st.button("生成新测试"):
+            st.session_state.quiz_questions = quiz_questions
+            st.session_state.user_answers = [None] * len(quiz_questions)
+            st.session_state.quiz_submitted = False
+        
+        if 'quiz_questions' not in st.session_state:
+            st.write("点击上方按钮生成测试题")
+            return
+            
+        questions = st.session_state.quiz_questions
+        user_answers = st.session_state.user_answers
+        submitted = st.session_state.quiz_submitted
+        
+        for i, (_, row) in enumerate(questions.iterrows()):
+            st.subheader(f"问题 {i+1}")
+            st.markdown(f"**健康声明：** {row['claim']}")
+            
+            if not submitted:
+                options = ['非常可信', '比较可信', '不确定', '不太可信', '非常不可信']
+                user_answers[i] = st.radio(
+                    f"您认为这个声明的可信度如何？",
+                    options,
+                    key=f"quiz_q{i}"
+                )
+            else:
+                correct_answer = '非常可信' if row['credibility'] > 0.8 else '比较可信' if row['credibility'] > 0.6 else '不太可信' if row['credibility'] > 0.4 else '非常不可信'
+                user_answer = user_answers[i]
+                
+                st.info(f"您的选择: **{user_answer}**")
+                if user_answer == correct_answer:
+                    st.success(f"✅ 正确！实际可信度: {row['credibility']:.2f}")
+                else:
+                    st.error(f"❌ 错误，正确选项是: **{correct_answer}** (实际可信度: {row['credibility']:.2f})")
+                
+                with st.expander("查看解释"):
+                    st.markdown(f"**科学解释：** {row['explanation']}")
+        
+        if not submitted:
+            if st.button("提交测试"):
+                st.session_state.quiz_submitted = True
+                st.experimental_rerun()
+        else:
+            # 计算得分
+            correct_count = sum(1 for i, row in enumerate(questions.iterrows()) 
+                             if user_answers[i] == ('非常可信' if row[1]['credibility'] > 0.8 else '比较可信' if row[1]['credibility'] > 0.6 else '不太可信' if row[1]['credibility'] > 0.4 else '非常不可信'))
+            score = correct_count / len(questions) * 100
+            
+            st.success(f"📝 测试完成！您的得分: **{score:.0f}分**")
+            if score >= 80:
+                st.balloons()
+                st.success("🎉 优秀！您对健康知识有很高的辨别能力")
+            elif score >= 60:
+                st.info("👍 良好！您对健康信息有一定判断能力")
+            else:
+                st.warning("💡 继续努力！建议多学习健康知识")
+
+    def claim_summarizer(self):
+        """健康声明摘要系统"""
+        st.subheader("📊 健康知识摘要")
+        
+        # 1. 可信度分布
+        st.markdown("#### 可信度分布")
+        fig = px.histogram(
+            self.data, 
+            x='credibility',
+            nbins=20,
+            labels={'credibility': '可信度评分'},
+            title='健康声明可信度分布'
+        )
+        st.plotly_chart(fig, use_container_width=True)
+        
+        # 2. 各主题的可信度比较
+        st.markdown("#### 主题领域可信度比较")
+        category_df = self.data.groupby('category')['credibility'].mean().reset_index()
+        category_df = category_df.sort_values('credibility', ascending=False)
+        
+        fig = px.bar(
+            category_df,
+            x='category',
+            y='credibility',
+            color='credibility',
+            color_continuous_scale='Bluered',
+            labels={'credibility': '平均可信度', 'category': '主题领域'}
+        )
+        st.plotly_chart(fig, use_container_width=True)
+        
+        # 3. 高可信度声明展示
+        st.markdown("#### 高可信度科学声明")
+        top_claims = self.data.sort_values('credibility', ascending=False).head(5)
+        for _, row in top_claims.iterrows():
+            with st.expander(f"⭐ {row['claim']} (可信度: {row['credibility']:.2f})"):
+                st.markdown(f"**类别:** {row['category']}")
+                st.markdown(f"**说明:** {row['explanation']}")
+        
+        # 4. 高风险声明警报
+        st.markdown("#### ❗高风险伪科学声明")
+        low_credibility = self.data[self.data['credibility'] < 0.3].sample(3)
+        for _, row in low_credibility.iterrows():
+            st.markdown(f"⚠️ **{row['claim']}** (可信度: {row['credibility']:.2f})")
+
+# 6. Streamlit应用主函数
 def main_health_app():
     st.set_page_config(
         page_title="科学健康知识可信度分析系统",
         page_icon="🩺",
         layout="wide",
-        initial_sidebar_state="expanded"
+        initial_sidebar_state="expanded",
+        menu_items={
+            'Get Help': 'https://www.example.com/help',
+            'Report a bug': "https://www.example.com/bug",
+            'About': "# 科学健康知识分析系统 v2.0"
+        }
     )
     
     st.title("🩺 科学健康知识可信度分析系统")
-    st.markdown("基于15,000条专业健康声明数据集评估健康信息可信度")
+    st.caption("基于15,000条专业健康声明的可信度分析与知识发现")
     
     # 初始化状态
-    if 'history' not in st.session_state:
-        st.session_state.history = []
+    st.session_state.setdefault('history', [])
+    st.session_state.setdefault('health_topic', '心血管健康')
+    
+    # 页面选择器
+    page = st.sidebar.selectbox(
+        "功能菜单",
+        ["健康声明分析", "知识图谱", "风险评估", "健康小测试", "知识摘要"],
+        index=0
+    )
     
     # 加载数据
     data_loader = HealthDataLoader()
     if not data_loader.load_data():
         return
     
-    # 模型训练部分
-    with st.expander("数据集样本"):
-        st.table(data_loader.get_sample_data())
+    # 顶部展示健康主题分布
+    category_counts = data_loader.get_categories()
+    if category_counts is not None:
+        with st.container():
+            st.subheader("健康主题分布")
+            st.bar_chart(category_counts)
     
-    if st.button("训练可信度分析模型"):
-        model_pipeline = HealthKnowledgePipeline(data_loader.data)
-        performance = model_pipeline.train_model()
-        st.text(performance['classification_report'])
+    # 显示数据集样本
+    with st.expander("数据集样本", expanded=False):
+        st.dataframe(data_loader.get_sample_data(3))
+    
+    # 功能页面路由
+    if page == "健康声明分析":
+        render_analysis_page(data_loader.data)
+    elif page == "知识图谱":
+        render_knowledge_graph_page(data_loader.data)
+    elif page == "风险评估":
+        render_risk_assessment_page(data_loader.data)
+    elif page == "健康小测试":
+        render_quiz_page(data_loader.data)
+    elif page == "知识摘要":
+        render_summary_page(data_loader.data)
+    
+    # 侧边栏区域
+    with st.sidebar:
+        st.divider()
+        st.subheader("历史记录")
+        if st.session_state.history:
+            for i, item in enumerate(st.session_state.history[-3:]):
+                risk_color = "green" if item['score'] > 70 else "orange" if item['score'] > 30 else "red"
+                with st.expander(f"记录 {i+1} ({item['score']}分)", expanded=False):
+                    st.markdown(f"**声明:** {item['claim']}")
+                    st.markdown(f"**时间:** {item['time']}")
+                    st.markdown(f"**评估:** <span style='color:{risk_color};'>{item['score']}分</span>", 
+                               unsafe_allow_html=True)
+        else:
+            st.info("暂无分析历史")
         
-        # 可视化混淆矩阵
-        fig, ax = plt.subplots(figsize=(6, 4))
-        sns.heatmap(performance['confusion_matrix'], annot=True, fmt='d', 
-                   cmap='Blues', ax=ax)
-        ax.set_title('模型混淆矩阵')
-        st.pyplot(fig)
+        st.divider()
+        st.subheader("权威医学资源")
+        st.markdown("- [世界卫生组织 (WHO)](https://www.who.int)")
+        st.markdown("- [中国国家卫健委](http://www.nhc.gov.cn)")
+        st.markdown("- [美国疾控中心 (CDC)](https://www.cdc.gov)")
+        st.markdown("- [PubMed医学文献](https://pubmed.ncbi.nlm.nih.gov)")
+        
+        st.divider()
+        st.caption("系统版本: 2.1 | 更新日期: 2023-06-15")
+
+def render_analysis_page(data):
+    """健康声明分析页面"""
+    st.header("🔍 健康声明分析")
+    
+    # 模型训练部分
+    if st.button("训练/更新模型", type="primary"):
+        model_pipeline = HealthKnowledgePipeline(data)
+        performance = model_pipeline.train_model()
+        
+        # 可视化模型性能
+        with st.expander("模型性能详情"):
+            model_pipeline.visualize_performance()
     
     # 声明分析界面
     health_claim = st.text_area(
@@ -309,7 +782,11 @@ def main_health_app():
         height=120
     )
     
-    if st.button("分析可信度"):
+    if st.button("分析可信度", type="secondary"):
+        if not health_claim:
+            st.warning("请输入健康声明内容")
+            return
+            
         try:
             model = joblib.load('health_knowledge_model.pkl')
             report_gen = HealthCredibilityReport()
@@ -332,23 +809,7 @@ def main_health_app():
             )
             
             # 显示报告
-            col1, col2 = st.columns([1, 2])
-            with col1:
-                st.metric("可信度评分", f"{credibility_score:.1f}分")
-                st.progress(credibility_score/100)
-                
-            with col2:
-                st.markdown(f"**风险评估**: <span style='color:{report['risk_color']};'>{report['risk_level']}</span>", 
-                           unsafe_allow_html=True)
-                for factor in report['key_factors']:
-                    st.markdown(f"- {factor}")
-            
-            # 建议部分
-            st.subheader("专业建议")
-            for rec in report['recommendations']:
-                if rec.startswith("✅"): st.success(rec)
-                elif rec.startswith("⚠️"): st.warning(rec)
-                else: st.error(rec)
+            report_gen.display_report(report)
                 
             # 保存历史
             st.session_state.history.append({
@@ -360,34 +821,42 @@ def main_health_app():
         except Exception as e:
             st.error(f"分析过程出错: {str(e)}")
             st.error("请确保数据集和模型已准备就绪")
-    
-    # 历史记录侧边栏
-    st.sidebar.title("分析历史")
-    if st.session_state.history:
-        for item in st.session_state.history[-5:]:
-            score = item['score']
-            color = "green" if score > 70 else "orange" if score > 30 else "red"
-            st.sidebar.markdown(
-                f"<div style='border-left:4px solid {color};padding:8px;margin:5px;'>"
-                f"{item['claim']}<br><small>{item['time']}</small><br>"
-                f"<strong>{score:.1f}分</strong></div>", 
-                unsafe_allow_html=True
-            )
-    else:
-        st.sidebar.info("暂无分析历史")
-    
-    # 专业资源区
-    st.sidebar.title("权威医学资源")
-    st.sidebar.markdown("[世界卫生组织(WHO)](https://www.who.int)")
-    st.sidebar.markdown("[中国国家卫健委](http://www.nhc.gov.cn)")
-    st.sidebar.markdown("[美国CDC](https://www.cdc.gov)")
-def test_chinese_processing():
-    import jieba
-    test_text = "科学健康知识可信度分析"
-    seg_list = jieba.cut(test_text)
-    print("中文分词测试:", "/".join(seg_list))
-    return "✅ 中文处理模块验证成功"
+
+def render_knowledge_graph_page(data):
+    """健康知识图谱页面"""
+    st.header("🧠 健康知识图谱")
+    extensions = HealthSystemExtensions(data)
+    extensions.knowledge_graph()
+
+def render_risk_assessment_page(data):
+    """多声明风险评估页面"""
+    st.header("📈 综合健康风险评估")
+    extensions = HealthSystemExtensions(data)
+    extensions.health_risk_assessment()
+
+def render_quiz_page(data):
+    """健康知识小测试页面"""
+    st.header("🧪 健康知识小测验")
+    extensions = HealthSystemExtensions(data)
+    extensions.health_quiz()
+
+def render_summary_page(data):
+    """健康知识摘要页面"""
+    st.header("📊 健康知识摘要")
+    extensions = HealthSystemExtensions(data)
+    extensions.claim_summarizer()
 
 # 在主函数中调用测试
 if __name__ == "__main__":
+    # 中文分词测试
+    test_chinese_processing = """
+    def test_chinese_processing():
+        import jieba
+        test_text = "科学健康知识可信度分析"
+        seg_list = jieba.cut(test_text)
+        print("中文分词测试:", "/".join(seg_list))
+        return "✅ 中文处理模块验证成功"
+    """
+    
+    # 运行主应用
     main_health_app()
