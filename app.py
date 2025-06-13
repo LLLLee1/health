@@ -380,6 +380,14 @@ def main_health_app():
     st.sidebar.markdown("[世界卫生组织(WHO)](https://www.who.int)")
     st.sidebar.markdown("[中国国家卫健委](http://www.nhc.gov.cn)")
     st.sidebar.markdown("[美国CDC](https://www.cdc.gov)")
+def test_chinese_processing():
+    import jieba
+    test_text = "科学健康知识可信度分析"
+    seg_list = jieba.cut(test_text)
+    print("中文分词测试:", "/".join(seg_list))
+    return "✅ 中文处理模块验证成功"
 
+# 在主函数中调用测试
 if __name__ == "__main__":
+    print(test_chinese_processing())
     main_health_app()
