@@ -200,7 +200,7 @@ class HealthKnowledgePipeline:
             
         cm = self.performance['confusion_matrix']
         fig, ax = plt.subplots(figsize=(6, 4))
-        sn极客时间s.heatmap(cm, annot=True, fmt='d', cmap='Blues', 
+        sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', 
                    xticklabels=['不可信', '可信'], 
                    yticklabels=['不可信', '可信'])
         ax.set_xlabel('预测')
