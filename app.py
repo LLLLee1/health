@@ -150,14 +150,14 @@ class HealthKnowledgePipeline:
         """训练专业健康知识模型"""
         # 准备数据
         X = self.data['claim']
-        y = self.data['credibility'].apply(lambda x: 1 if x > 0.7 else 0)  # 1为可信，0为不可信
+        y = self.data['credibility'].apply(lambda x: 1 if x > 0.7 else 0)
         
         X_train, X_test, y_train, y_test = train_test_split(
             X, y, test_size=0.2, random_state=42
         )
         
-极客时间        # 创建模型管道
-        self.model = Pipeline([
+        # 创建模型管道（此处需保持一致缩进）
+        self.model = Pipeline([  # 确保这行缩进与上面代码一致
             ('features', self.feature_engineer),
             ('classifier', GradientBoostingClassifier(
                 n_estimators=200,
@@ -167,6 +167,8 @@ class HealthKnowledgePipeline:
                 random_state=42
             ))
         ])
+        
+        
         
         # 训练模型
         with st.spinner("模型训练中，请稍候..."):
