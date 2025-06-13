@@ -1,4 +1,13 @@
+[global]
+developmentMode = false
+
 [server]
 port = 8501
-maxUploadSize = 2000
 enableCORS = false
+maxUploadSize = 200
+enableXsrfProtection = true
+
+# 中文支持
+[browser]
+serverAddress = "0.0.0.0"
+serverPort = 8501
